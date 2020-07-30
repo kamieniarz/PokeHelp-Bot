@@ -63,17 +63,17 @@ module.exports={
 								if(error){console.info(timeStamp+" "+cc.hlred+" ERROR "+cc.reset+" Could not "+cc.yellow+"SELECT * FROM"+cc.cyan+" temporaryRoles"+cc.reset+" table\nRAW: "+error);}
 								else{
 									if(results.length<1){
-										return channel.send("⚠ "+mentionMember+" does **NOT** have any `temporary roles`, "+member)
+										return channel.send("⚠ Użytkownik nie ma przyznanej żadnej roli")
 											.catch(err=>console.info(timeStamp+" "+cc.hlred+" ERROR "+cc.reset+" "+err.message))
 									}
 									else{
-										let daRolesFindings="✅ "+mentionMember+"'s TemporaryRole(s):\n";
+										let daRolesFindings="✅ Użytkownik posiada role:\n";
 										for(rowNumber="0"; rowNumber<results.length; rowNumber++){
 											let startDateVal=new Date(); startDateVal.setTime(results[rowNumber].startDate);
-											startDateVal=(startDateVal.getMonth()+1)+"/"+startDateVal.getDate()+"/"+startDateVal.getFullYear();
+											startDateVal=startDateVal.getDate()+"/"+(startDateVal.getMonth()+1)+"/"+startDateVal.getFullYear();
 											let endDateVal=new Date(); endDateVal.setTime(results[rowNumber].endDate);
-											finalDate=(endDateVal.getMonth()+1)+"/"+endDateVal.getDate()+"/"+endDateVal.getFullYear();
-											daRolesFindings+="**"+results[rowNumber].temporaryRole+"**, ends:`"+finalDate+"`, addedBy: <@"+results[rowNumber].addedByID+"> on:`"+startDateVal+"`\n";
+											finalDate=endDateVal.getDate()+"/"+(endDateVal.getMonth()+1)+"/"+endDateVal.getFullYear();
+											daRolesFindings+="**"+results[rowNumber].temporaryRole+"**, wygasa: `"+finalDate+"`, przyznana przez: <@"+results[rowNumber].addedByID+"> w dniu: `"+startDateVal+"`\n";
 										}
 										return channel.send(daRolesFindings).catch(err=>console.info(timeStamp+" "+cc.hlred+" ERROR "+cc.reset+" "+err.message))
 									}
@@ -84,17 +84,17 @@ module.exports={
 							sqlite.all(`SELECT * FROM temporaryRoles WHERE userID="${mentionMember.id}" AND guildID="${serverSettings.servers[sid].id}";`)
 							.then(rows=>{
 								if(rows.length<1){
-									return channel.send("⚠ "+mentionMember+" does **NOT** have any `temporary roles`, "+member)
+									return channel.send("⚠ Użytkownik nie ma przyznanej żadnej roli")
 										.catch(err=>console.info(timeStamp+" "+cc.hlred+" ERROR "+cc.reset+" "+err.message))
 								}
 								else{
-									let daRolesFindings="✅ "+mentionMember+"'s TemporaryRole(s):\n";
+									let daRolesFindings="✅ Użytkownik posiada role:\n";
 									for(rowNumber="0"; rowNumber<rows.length; rowNumber++){
 										let startDateVal=new Date(); startDateVal.setTime(rows[rowNumber].startDate);
 										startDateVal=(startDateVal.getMonth()+1)+"/"+startDateVal.getDate()+"/"+startDateVal.getFullYear();
 										let endDateVal=new Date(); endDateVal.setTime(rows[rowNumber].endDate);
-										finalDate=(endDateVal.getMonth()+1)+"/"+endDateVal.getDate()+"/"+endDateVal.getFullYear();
-										daRolesFindings+="**"+rows[rowNumber].temporaryRole+"**, ends:`"+finalDate+"`, addedBy: <@"+rows[rowNumber].addedByID+"> on:`"+startDateVal+"`\n";
+										finalDate=endDateVal.getDate()+"/"+(endDateVal.getMonth()+1)+"/"+endDateVal.getFullYear();
+										daRolesFindings+="**"+rows[rowNumber].temporaryRole+"**, wygasa: `"+finalDate+"`, przyznana przez: <@"+rows[rowNumber].addedByID+"> w dniu: `"+startDateVal+"`\n";
 									}
 									return channel.send(daRolesFindings).catch(err=>console.info(timeStamp+" "+cc.hlred+" ERROR "+cc.reset+" "+err.message))
 								}
@@ -124,7 +124,7 @@ module.exports={
 										myDB.query(`DELETE FROM PokeHelp_bot.temporaryRoles WHERE userID="${mentionMember.id}" AND temporaryRole="${roleSearched}" AND guildID="${serverSettings.servers[sid].id}";`,async (error,results)=>{
 											if(error){console.info(timeStamp+" "+cc.hlred+" ERROR "+cc.reset+" Could not "+cc.yellow+"SELECT * FROM"+cc.cyan+" temporaryRoles"+cc.reset+" table\nRAW: "+error);}
 											else{
-												return channel.send("⚠ "+mentionMember+" have **lost** their role: **"+theirRole.name+"** and has been removed from my `DataBase`, "+member)
+												return channel.send("⚠ Użytkownik utracił dostęp do roli **"+theirRole.name+"**")
 											}
 										});
 									}
@@ -144,7 +144,7 @@ module.exports={
 									}
 									sqlite.get(`DELETE FROM temporaryRoles WHERE userID="${mentionMember.id}" AND temporaryRole="${roleSearched}" AND guildID="${serverSettings.servers[sid].id}"`)
 									.then(row=>{
-										return channel.send("⚠ "+mentionMember+" have **lost** their role: **"+theirRole.name+"** and has been removed from my `DataBase`, "+member);
+										return channel.send("⚠ Użytkownik utracił dostęp do roli **"+theirRole.name+"**");
 									});
 								}
 							})
@@ -187,7 +187,7 @@ module.exports={
 												console.info(timeStamp+" "+cc.hlred+" ERROR "+cc.reset+" Could not "+cc.yellow+"UPDATE"+cc.cyan+" temporaryRoles"+cc.reset+" table\nRAW: "+error);
 											}
 											else{
-												return channel.send("✅ This member already has this **temporary** role... therefore I have added **"+args[1]+"** more days, "+member);
+												return channel.send("✅ Dostęp do roli **"+roleSearched+"** został przedłużony o **"+args[1]+"** dni. Ranga wygaśnie: `"+finalDate+"`");
 											}
 										}
 									);
@@ -204,7 +204,7 @@ module.exports={
 									mentionMember.addRole(theirRole).catch(err=>console.info(timeStamp+" "+cc.hlred+" ERROR "+cc.reset+" "+err.message));
 									console.log(timeStamp+" "+cc.cyan+mentionMember.user.username+cc.reset+"("+cc.lblue+mentionMember.id+cc.reset
 										+") was given a "+cc.green+"temporary"+cc.reset+" role: "+cc.green+roleSearched+cc.reset+", by: "+cc.red+member.user.username+cc.reset+"("+member.id+")");
-									return channel.send("🎉 "+mentionMember+" has been given a **temporary** role: **"+roleSearched+"**, enjoy! They will lose this role on: `"+finalDateDisplay+"`");
+									return channel.send("🎉 Użytkownik otrzymał rolę **"+roleSearched+"** na **"+args[1]+"** dni! Dostęp do niej wygaśnie: `"+finalDateDisplay+"`");
 								}
 							}
 						});
@@ -218,7 +218,7 @@ module.exports={
 									[newFinalDate])
 								.catch(error=>console.info(timeStamp()+" "+cc.hlred+" ERROR "+cc.reset+" Could not "+cc.yellow+"UPDATE"+cc.cyan+" temporaryRoles"+cc.reset+" table | "+error.message));
 								
-								return channel.send("✅ This member already has this **temporary** role... therefore I have added **"+args[1]+"** more days, "+member);
+								return channel.send("✅ Dostep do roli **"+roleSearched+"** został przedłużony o **"+args[1]+"** dni. Ranga wygaśnie: `"+finalDate+"`");
 							}
 							else{
 								let curDate=new Date().getTime(); let finalDateDisplay=new Date(); 
@@ -230,7 +230,7 @@ module.exports={
 								mentionMember.addRole(theirRole).catch(err=>console.info(timeStamp+" "+cc.hlred+" ERROR "+cc.reset+" "+err.message));
 								console.log(timeStamp+" "+cc.cyan+mentionMember.user.username+cc.reset+"("+cc.lblue+mentionMember.id+cc.reset
 									+") was given a "+cc.green+"temporary"+cc.reset+" role: "+cc.green+roleSearched+cc.reset+", by: "+cc.red+member.user.username+cc.reset+"("+member.id+")");
-								return channel.send("🎉 "+mentionMember+" has been given a **temporary** role: **"+roleSearched+"**, enjoy! They will lose this role on: `"+finalDateDisplay+"`");
+								return channel.send("🎉 Użytkownik otrzymał rolę **"+roleSearched+"** na **"+args[1]+"** dni! Dostęp do niej wygaśnie: `"+finalDateDisplay+"`");
 							}
 						})
 						.catch(err=>console.info(timeStamp+" "+cc.hlred+" ERROR "+cc.reset+" "+err.message)); return;
