@@ -31,8 +31,8 @@ const bot=new Discord.Client(); bot.commands=new Discord.Collection();
 //
 // DEPENDENCIES AND SETTINGS
 //
-const fs=require("fs"), request=require("request"), 
-	botConfig=require("./config/botConfig.json"), globalSettings=require("./config/globalSettings.json"),
+const fs=require("fs"), request=require("request"), mySQL=require("mysql"), sqlite=require("sqlite"); sqlite.open("./database/data.sqlite");
+const botConfig=require("./config/botConfig.json"), globalSettings=require("./config/globalSettings.json"),
 	serverPokeSettings=require("./data/serverPokeSettings.json"),
 	chuckNorris=require("./data/chuckNorris.json"),
 	pokemon=require("./data/pokemon.json"), pokemonMoves=require("./data/pokemonMoves.json"),
@@ -40,16 +40,7 @@ const fs=require("fs"), request=require("request"),
 var serverSettings=JSON.parse(fs.readFileSync("./config/serverSettings.json","utf8")), myDB="disabled";
 if(serverSettings.myDBserver){
 	if(serverSettings.myDBserver.enabled==="yes"){
-		const mySQL=require("mysql");
-		myDB=mySQL.createConnection(serverSettings.myDBserver);
-		myDB.connect(error=>{
-			if(error){
-				console.info(timeStamp()+" "+cc.hlred+" ERROR "+cc.reset+" Could not "+cc.yellow+"ACCESS"+cc.cyan+" Database "+cc.reset+"(invalid login)\nRAW: "+error.sqlMessage)
-			}
-		});
-	}
-	else{
-		sqlite=require("sqlite"); sqlite.open("./database/data.sqlite");
+		myDB=mySQL.createConnection(serverSettings.myDBserver); myDB.connect(error=>{if(error){console.info(error)}});
 	}
 }
 
@@ -206,8 +197,7 @@ function getNewMember(member,channelID,agreementRequired){
 	else if(channelID){
 		assignedChannel="(<#"+channelID+">)";
 	}
-	let welcomeMSG=`
-Welcome to **${member.guild.name}**'s Discord, ${member}.
+	let welcomeMSG=`Welcome to **${member.guild.name}**'s Discord, ${member}.
 
 **FIRST**
 	Confirm your contact information with **Discord** so you can have read-access to our basic channels.
@@ -219,9 +209,7 @@ Welcome to **${member.guild.name}**'s Discord, ${member}.
 **LASTLY:**
 	Enjoy and have fun catching awesome **Pokemon** while using our services. Meet other trainers, and try to attend our community events.
 
--<@${botConfig.ownerID}>
-`
-;
+-<@${botConfig.ownerID}>`;
 	member.send(welcomeMSG)
 	.catch(error=>console.info(timeStamp()+" "+cc.hlred+" ERROR "+cc.reset+" "+error.message+" | Member has disabled DMs or has blocked me"));
 }
@@ -363,43 +351,9 @@ setInterval(function(){
 					let rows=results;
 					for(let rowNumber="0"; rowNumber<rows.length; rowNumber++){
 						dbTime=rows[rowNumber].endDate; daysLeft=(dbTime*1)-(timeNow*1);
-						
-						sid=getGuild(rows[rowNumber].guildID);if(sid===undefined){return}
-						member=bot.guilds.get(rows[rowNumber].guildID).members.get(rows[rowNumber].userID) || "notFound";
-						
-						if(serverSettings.servers[sid].id){
-							if(serverSettings.servers[sid].tempRoles){
-								if(serverSettings.servers[sid].tempRoles.remindAtDays){
-									let daysRemaining=Math.ceil(daysLeft/86400000), remindAt=(serverSettings.servers[sid].tempRoles.remindAtDays*1), dayORdays=" day";
-									if(serverSettings.servers[sid].tempRoles.remindAtDays>1){dayORdays=" days"}
-									if(daysRemaining===remindAt){
-										myDB.query(`UPDATE PokeHelp_bot.temporaryRoles SET reminderSent=? WHERE userID="${rows[rowNumber].userID}" AND temporaryRole="${rows[rowNumber].temporaryRole}";`,
-											["yes"],error=>{
-												if(error){console.info(timeStamp()+" "+cc.hlred+" ERROR "+cc.reset+" Could not "+cc.yellow+"UPDATE"+cc.cyan+" temporaryRoles"+cc.reset+" table\nRAW: "+error);}
-											}
-										);
-										if(rows[rowNumber].reminderSent===null || rows[rowNumber].reminderSent==="no"){
-											if(member!=="notFound"){
-												
-												if(botConfig.consoleLog==="all" || botConfig.consoleLog==="allnochat"){
-													console.info(timeStamp()+" "+cc.lblue+rows[rowNumber].userName+cc.reset+"'s "
-													+cc.green+"temporary role"+cc.reset+" is expiring soon, sending notification..."+cc.reset);
-												}
-												member.send(
-													"⚠ <@"+rows[rowNumber].userID+">, you will **lose** your role: **"+rows[rowNumber].temporaryRole+"** "
-													+"in `"+daysRemaining+dayORdays+"`. Please contact <@"+botConfig.ownerID
-													+"> if you wish to renew your **temporary role**."
-												)
-												.catch(error=>console.info(timeStamp()+" "+cc.hlred+" ERROR "+cc.reset+" "+error.message+" | Member has disabled DMs, blocked me, or is no longer in server"));
-											}
-										}
-									}
-								}
-							}
-						}
-						
-						
 						if(daysLeft<1){
+							sid=getGuild(rows[rowNumber].guildID);if(sid===undefined){return}
+							member=bot.guilds.get(rows[rowNumber].guildID).members.get(rows[rowNumber].userID) || "notFound";
 							if(member==="notFound"){
 								if(botConfig.consoleLog==="all" || botConfig.consoleLog==="allnochat" || botConfig.consoleLog==="cmdsevents" || botConfig.consoleLog==="events"){
 									console.info(
@@ -429,13 +383,11 @@ setInterval(function(){
 									}
 								}
 							}
-							if(member!=="notFound"){
-								member.send(
-									"⚠ <@"+rows[rowNumber].userID+">, you have **lost** your role: **"+rows[rowNumber].temporaryRole+"** - your **temporary**"
-									+"access has __EXPIRED__ 😭 \nPlease contact <@"+botConfig.ownerID+"> if you wish to renew your **temporary role**."
-								)
-								.catch(error=>console.info(timeStamp()+" "+cc.hlred+" ERROR "+cc.reset+" "+error.message+" | Member has disabled DMs, blocked me, or is no longer in server"));
-							}
+							member.send(
+								"⚠ <@"+rows[rowNumber].userID+">, utraciłeś(aś) rolę **"+rows[rowNumber].temporaryRole+"**, a wraz z nią dostęp do mapy 😭 "
+								+"\nWejdź na zrzutkę i wesprzyj mapę ponownie: **https://zrzutka.pl/b6fhpz** \nW razie wątpliwości skontaktuj się z Administratorem mapy: <@"+botConfig.ownerID+">"
+							)
+							.catch(error=>console.info(timeStamp()+" "+cc.hlred+" ERROR "+cc.reset+" "+error.message+" | Member has disabled DMs, blocked me, or is no longer in server"));
 							console.log(
 								timeStamp()+" "+cc.cyan+member.user.username+cc.reset+"("+cc.lblue+member.id+cc.reset+") have lost their "
 								+cc.green+"temporary"+cc.reset+" role: "+cc.red+rows[rowNumber].temporaryRole+cc.reset+", in server: "+cc.yellow+rows[rowNumber].guildName+cc.reset
@@ -505,8 +457,8 @@ setInterval(function(){
 							);
 						}
 						member.send(
-							"⚠ <@"+rows[rowNumber].userID+">, you have **lost** your role: **"+rows[rowNumber].temporaryRole+"** - your **temporary**"
-							+"access has __EXPIRED__ 😭 \nPlease contact <@"+botConfig.ownerID+"> if you wish to renew your **temporary role**."
+							"⚠ <@"+rows[rowNumber].userID+">, utraciłeś(aś) rolę **"+rows[rowNumber].temporaryRole+"**, a wraz z nią dostęp do mapy 😭 "
+							+"\nWejdź na zrzutkę i wesprzyj mapę ponownie: https://zrzutka.pl/b6fhpz \nW razie wątpliwości skontaktuj się z Administratorem mapy: <@"+botConfig.ownerID+">"
 						)
 						.catch(error=>console.info(timeStamp()+" "+cc.hlred+" ERROR "+cc.reset+" "+error.message+" | Member has disabled DMs, blocked me, or is no longer in server"));
 						let roleToRemove=bot.guilds.get(rows[rowNumber].guildID).roles.find(role=>role.name===rows[rowNumber].temporaryRole) || "notFound";
@@ -533,7 +485,7 @@ setInterval(function(){
 // 43200000 = 12hrs
 // 21600000 = 6hrs
 // 10800000 = 3hrs
-// 3600000 = 1hr <-
+// 3600000 = 1hr
 // 1800000 = 30mins
 
 
@@ -596,14 +548,6 @@ bot.on("ready", ()=>{
 		// CREATE TABLE TEMPORARY ROLES
 		myDB.query(`CREATE TABLE IF NOT EXISTS PokeHelp_bot.temporaryRoles (userID TEXT,userName TEXT,temporaryRole TEXT,guildID TEXT,guildName TEXT,startDate TEXT,endDate TEXT,addedByID TEXT,addedByName TEXT);`,error=>{
 			if(error){console.info(timeStamp()+" "+cc.hlred+" ERROR "+cc.reset+" Could not "+cc.yellow+"CREATE TABLE"+cc.cyan+" temporaryRoles "+cc.reset+"in database\nRAW: "+error)}
-		});
-		myDB.query(`SELECT reminderSent FROM PokeHelp_bot.temporaryRoles;`,async (error,results)=>{
-			if(error){console.info(timeStamp()+" "+cc.hlyellow+" WARNING "+cc.reset+" Could not "+cc.yellow+"SELECT reminderSent FROM"+cc.cyan+" temporaryRoles"+cc.reset+" table\nRAW: "+error
-				+"\n"+timeStamp()+" Column above did not exist. Adding column to table...");
-				myDB.query(`ALTER TABLE PokeHelp_bot.temporaryRoles ADD COLUMN reminderSent TEXT AFTER addedByName;`,error=>{
-					if(error){console.info(timeStamp()+" "+cc.hlred+" ERROR "+cc.reset+" Could not "+cc.yellow+"ALTER TABLE"+cc.cyan+" temporaryRoles "+cc.reset+"in database\nRAW: "+error)}
-				});
-			}
 		});
 
 		// CREATE TABLE TEMPORARY SELF ROLES
@@ -752,8 +696,8 @@ bot.on("guildMemberAdd", member=>{
 //
 // BAN EVENT
 //
-bot.on("guildBanAdd",async (guild,user)=>{
-	let sid=await getGuild(guild.id);if(sid===undefined){return} let logginChannel="";
+bot.on("guildBanAdd",(guild,user)=>{
+	let sid=getGuild(guild.id);if(sid===undefined){return} let logginChannel="";
 	if(serverSettings.servers[sid].id){
 		if(serverSettings.servers[sid].moderationEvents){
 			if(serverSettings.servers[sid].moderationEvents.channelID){
@@ -782,98 +726,6 @@ bot.on("guildBanAdd",async (guild,user)=>{
 //									MESSAGE LISTENER											//
 //																								//
 //////////////////////////////////////////////////////////////////////////////////////////////////
-bot.on("messageUpdate",async (oldMessage,newMessage)=>{
-	if(newMessage.channel.guild===undefined){return}
-	let member=newMessage.member, sid=await getGuild(newMessage.channel.guild.id);if(sid===undefined){return}
-	// GRAB ADMINS AND MODERATORS
-	let adminRole=newMessage.channel.guild.roles.find(role=>role.name===serverSettings.servers[sid].adminRoleName);
-		if(!adminRole){
-			adminRole={"id":"10101"};console.info(timeStamp()+" "+cc.hlred+" ERROR "+cc.reset+" I could not find "
-				+cc.red+"adminRoleName"+cc.reset+": "+cc.cyan+serverSettings.servers[sid].adminRoleName+cc.reset+" for server: "
-				+cc.lblue+newMessage.channel.guild.name+cc.reset+" in "+cc.purple+"serverSettings.json"+cc.reset)}
-	let modRole=newMessage.channel.guild.roles.find(role=>role.name===serverSettings.servers[sid].modRoleName);
-		if(!modRole){
-			modRole={"id":"10101"};console.info(timeStamp()+" "+cc.hlred+" ERROR "+cc.reset+" I could not find "
-				+cc.red+"modRoleName"+cc.reset+": "+cc.cyan+serverSettings.servers[sid].modRoleName+cc.reset+" for server: "
-				+cc.lblue+newMessage.channel.guild.name+cc.reset+" in "+cc.purple+"serverSettings.json"+cc.reset)}
-	// FOUL LANGUAGE FILTER
-	if(foulText.some(word=>newMessage.content.includes(word))){
-		let skip="no";if(member.roles.has(modRole.id) || member.roles.has(adminRole.id) || member.id===botConfig.ownerID){skip="yes"}
-		if(serverSettings.servers[sid].id){if(serverSettings.servers[sid].chatFilter){if(serverSettings.servers[sid].chatFilter.allowFoulLanguage==="yes"){skip="yes"}}}
-		if(skip==="no"){
-			newMessage.delete();
-			embedMSG={
-				"embed": {
-					"color": 0xFF0000,
-					"title": "⚠ WARNING: Watch Your Language ⚠",
-					"thumbnail": {"url": globalSettings.images.warning},
-					"description": "You are being **WARNED** about a **inappropriate** word... "
-						+"Please watch your language; kids play this game too, you know\n**OffenseDate**: "+timeStamp(1)
-				}
-			};
-			console.log(
-				timeStamp()+" "+cc.hlyellow+" WARNING "+cc.reset+" FOUL LANGUAGE: "+cc.cyan+member.user.username+cc.reset+"("+cc.lblue+member.id+cc.reset+") said: "+newMessage.content
-			);
-			member.send(embedMSG).then(()=>{
-				member.send("Please **Read/Review Our Rules** in order to avoid a `Mute`/`Kick`/`Ban`")
-				.catch(error=>console.info(timeStamp()+" "+cc.hlred+" ERROR "+cc.reset+" "+error.message+" | Member has disabled DMs or has blocked me"));
-			})
-			.catch(error=>console.info(timeStamp()+" "+cc.hlred+" ERROR "+cc.reset+" "+error.message+" | Member has disabled DMs or has blocked me"));
-		}
-	}
-
-	// ADVERTISEMENT FILTER
-	if(advText.some(word=>newMessage.content.toLowerCase().includes(word))){
-		let skip="no";if(member.roles.has(modRole.id) || member.roles.has(adminRole.id) || member.id===botConfig.ownerID){skip="yes"}
-		if(serverSettings.servers[sid].id){if(serverSettings.servers[sid].chatFilter){if(serverSettings.servers[sid].chatFilter.allowLinks==="yes"){skip="yes"}}}
-		if(skip==="no"){
-			newMessage.delete();
-			embedMSG={
-				"embed": {
-					"color": 0xFF0000,
-					"title": "⚠ WARNING: No Advertising ⚠",
-					"thumbnail": {"url": globalSettings.images.warning},
-					"description": "You are being **WARNED** about a link... "
-						+"Advertising is **NOT** allowed in our server.\n**OffenseDate**: "+timeStamp(1)
-				}
-			};
-			console.log(
-				timeStamp()+" "+cc.hlyellow+" WARNING "+cc.reset+" ADVERTISEMENT: "+cc.cyan+member.user.username+cc.reset+"("+cc.lblue+member.id+cc.reset+") said: "+newMessage.content
-			);
-			member.send(embedMSG).then(()=>{
-				member.send("Please **Read/Review Our Rules** in order to avoid a `Mute`/`Kick`/`Ban`")
-				.catch(error=>console.info(timeStamp()+" "+cc.hlred+" ERROR "+cc.reset+" "+error.message+" | Member has disabled DMs or has blocked me"));
-			})
-			.catch(error=>console.info(timeStamp()+" "+cc.hlred+" ERROR "+cc.reset+" "+error.message+" | Member has disabled DMs or has blocked me"));
-		}
-	}
-
-	// INVITE LINK FILTER
-	let invLinks=newMessage.content.toLowerCase().match(/discord.gg/g);
-	if(invLinks){
-		let skip="no";if(member.roles.has(modRole.id) || member.roles.has(adminRole.id) || member.id===botConfig.ownerID){skip="yes"}
-		if(serverSettings.servers[sid].id){if(serverSettings.servers[sid].chatFilter){if(serverSettings.servers[sid].chatFilter.allowInvites==="yes"){skip="yes"}}}
-		if(skip==="no"){
-			newMessage.delete();
-			embedMSG={
-				"embed": {
-					"color": 0xFF0000,
-					"title": "⚠ WARNING: No Invites ⚠",
-					"thumbnail": {"url": globalSettings.images.warning},
-					"description": "You are being **WARNED** about an __invite__ code or link... "
-						+"Advertising of other servers is **NOT** allowed in our server.\n**OffenseDate**: "+timeStamp(1)
-				}
-			};
-			console.log(timeStamp()+" "+cc.hlyellow+" WARNING "+cc.reset+" INVITE: "+cc.cyan+member.user.username+cc.reset+"("+cc.lblue+member.id+cc.reset+") said: "+newMessage.content);
-			member.send(embedMSG).then(()=>{
-				member.send("Please **Read/Review Our Rules** in order to avoid a `Mute`/`Kick`/`Ban`")
-				.catch(error=>console.info(timeStamp()+" "+cc.hlred+" ERROR "+cc.reset+" "+error.message+" | Member has disabled DMs or has blocked me"))
-			}).catch(error=>console.info(timeStamp()+" "+cc.hlred+" ERROR "+cc.reset+" "+error.message+" | Member has disabled DMs or has blocked me"))
-		}
-	}
-});
-
-
 bot.on("message",message=>{
 	if(!message.member){return}if(!message.member.user){return}if(!message.member.user.username){return}
 	if(message.member.user.bot || message.channel.type==="dm"){return}if(!message.content){return}
