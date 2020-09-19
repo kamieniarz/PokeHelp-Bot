@@ -25,7 +25,7 @@ SOFTWARE.
 // DISCORD JS
 //
 const Discord=require("discord.js");
-const bot=new Discord.Client(); bot.commands=new Discord.Collection();
+const bot=new Discord.Client({fetchAllMembers: true}); bot.commands=new Discord.Collection();
 
 
 //
@@ -36,8 +36,8 @@ const fs=require("fs"), request=require("request"),
 	serverPokeSettings=require("./data/serverPokeSettings.json"),
 	chuckNorris=require("./data/chuckNorris.json"),
 	pokemon=require("./data/pokemon.json"), pokemonMoves=require("./data/pokemonMoves.json"),
-	pokemonTypes=require("./data/pokemonTypes.json"), pokemonTrivia=require("./data/pokemonTrivia.json");
-var serverSettings=JSON.parse(fs.readFileSync("./config/serverSettings.json","utf8")), myDB="disabled";
+	pokemonTypes=require("./data/pokemonTypes.json");
+var serverSettings=JSON.parse(fs.readFileSync("./config/serverSettings.json","utf8")), myDB="disabled", sqlite="disabled";
 if(serverSettings.myDBserver){
 	if(serverSettings.myDBserver.enabled==="yes"){
 		const mySQL=require("mysql");
@@ -64,7 +64,7 @@ for(const file of commands){
 
 
 //
-// SHORTEN JSON DATA
+// SHORTEN JSON DATA AND CONSOLE COLORS
 //
 const advText=globalSettings.advText, foulText=globalSettings.foulText, pokeCity=serverPokeSettings.pokeCity,
 	pokeBadge=serverPokeSettings.pokeBadge, pokeRegion=serverPokeSettings.pokeRegion, pokeCuttie=serverPokeSettings.pokeCuttie,
@@ -227,126 +227,6 @@ Welcome to **${member.guild.name}**'s Discord, ${member}.
 }
 
 
-
-//
-// CHAT ACTIVITY CHECK FUNCTION
-//
-/*
-function Inactive(guild, channel, flag){
-	let guildMembers=[],inactiveCount="",userCount="",warnembedMSG="";
-	guild.fetchMembers()
-	.then(liveGuild=>{
-		liveGuild.members.map(m=>{guildMembers.push(m)});
-		let timeDelay=1000;inactiveCount=0;userCount=guildMembers.length;
-		channel.send("⚠ I am about to check "+userCount+" members on this server for their last activity.");
-
-		embedMSG={"color": 0xFF0000,"title": "YOU HAVE BEEN KICKED","thumbnail": {"url": globalSettings.images.kicked},
-			"description": "**From Server**: "+guild.name+"\n**Reason**: You were inactive, if you feel this was in error contact us for a reinvite"};
-
-		warnembedMSG={"color": 0xFF0000,"title": "YOU HAVE BEEN WARNED","thumbnail": {"url": globalSettings.images.warning},
-			"description": "**From Server**: "+guild.name+"\n**Reason**: You are currently inactive, we will be removing people for inactivity in the near future."
-				+"If you do not say anything soon you will be kicked"};
-
-		for(var i=0; i<userCount; i++){
-			let currentMember=guildMembers[i],currentCount=i+1;
-			setTimeout(function(){
-				sqlite.get("SELECT * FROM chatTracker WHERE userID="+currentMember.user.id+" AND guildID="+guild.id)
-				.then(row=>{
-					if(!row){
-						if(!InactiveExempt(currentMember,guild)){
-							if(flag==="kick"){
-								//bot.users.get(currentMember.user.id).send({embed: embedMSG}).catch(err=>console.info(timeStamp()+" "+cc.hlred+" ERROR "+cc.reset+" "+err.message));
-								//bot.channels.get(config.modlogChannelID).send("User: "+currentCount+" of "+userCount+" "+currentMember.user+" was kicked for being inactive").catch(err=>console.info(timeStamp()+" "+cc.hlred+" ERROR "+cc.reset+" "+err.message));
-								//currentMember.kick("User was inactive").catch(err=>console.info(timeStamp()+" "+cc.hlred+" ERROR "+cc.reset+" "+err.message));
-							}
-							if(flag==="warn"){
-								//bot.users.get(currentMember.user.id).send({embed: warnembedMSG}).catch(err=>console.info(timeStamp()+" "+cc.hlred+" ERROR "+cc.reset+" "+err.message));
-								//bot.channels.get(config.modlogChannelID).send("User: "+currentCount+" of "+userCount+" "+currentMember.user+" was warned for being inactive").catch(err=>console.info(timeStamp()+" "+cc.hlred+" ERROR "+cc.reset+" "+err.message));
-							}
-							else{
-								sqlite.get("SELECT * FROM chatTracker WHERE userID="+currentMember.id+" AND guildID="+guild.id)
-								.then(row=>{
-									if(!row){
-										sqlite.run("INSERT INTO chatTracker (userID, userName, lastMsg, guildID, guildName, lastDate, points, level) VALUES (?,?,?,?,?)",
-											[currentMember.id, currentMember.name, "Hello! I'm here", guild.id, guild.name, currentMember.joinedTimestamp, 1, 0])
-										.catch(err=>console.info(timeStamp()+" "+cc.hlred+" ERROR "+cc.reset+" "+err.message))
-									}
-									//else{
-									//	sqlite.run("UPDATE chatTracker SET lastDate=? WHERE userID="+currentMember.id,[currentMember.joinedTimestamp, 0, 0])
-									//		.catch(err=>{console.info("ERROR admin#I-2:\n"+err.message)});
-									//}
-								})
-								.catch(err=>{console.info("ERROR admin#I-3:\n"+err.message)});
-								let skipDTcheck="no";
-								let lastseen=currentMember.joinedTimestamp;let lastSeenDate=new Date();lastSeenDate.setTime(lastseen);
-								let daLastDate=DTdays[lastSeenDate.getDay()]+", "+DTmonths[lastSeenDate.getMonth()]+" "+lastSeenDate.getDate()+", "+lastSeenDate.getFullYear();
-								daysJoined=new Date().getTime() - lastseen; daysJoined=daysJoined/1000/60/60/24; daysJoined=daysJoined.toFixed(0);
-								if(daysJoined>365 && daysJoined<731 && skipDTcheck==="no"){daysJoined=daysJoined-365;daysJoined="1 year, "+daysJoined; skipDTcheck="yes"}
-								if(daysJoined>730 && daysJoined<1096 && skipDTcheck==="no"){daysJoined=daysJoined-730;daysJoined="2 years, "+daysJoined; skipDTcheck="yes"}
-								if(daysJoined>1095 && daysJoined<1461 && skipDTcheck==="no"){daysJoined=daysJoined-1095;daysJoined="3 years, "+daysJoined; skipDTcheck="yes"}
-								if(daysJoined>1460 && daysJoined<1826 && skipDTcheck==="no"){daysJoined=daysJoined-1460;daysJoined="4 years, "+daysJoined; skipDTcheck="yes"}
-								channel.send("User "+currentCount+"/"+userCount+": "+currentMember.user+" has not been seen since we started tracking\n"
-									+"» Adding their `joinedAt`-date: **"+daLastDate+"** as the `lastDate`, which was **"+daysJoined+" days ago**");
-							}
-							inactiveCount++;
-						}
-					}
-					else{
-						let currentDate=new Date();
-						let inactiveDate=new Date(currentDate.getFullYear(),currentDate.getMonth()-serverSettings.inactiveMonthLimit,currentDate.getDate()-(serverSettings.inactiveWeekLimit*7), 0, 0, 0, 0);
-						let lastseen=row.lastDate;let lastSeenDate=new Date();lastSeenDate.setTime(lastseen);
-
-						let resTimer="no";
-						if(inactiveDate > lastSeenDate){ resTimer="yes" }
-
-						if(inactiveDate > lastSeenDate){
-							if(!InactiveExempt(currentMember,guild)){
-								if(flag==="kick"){
-									//bot.users.get(currentMember.user.id).send({embed: embedMSG}).catch(err=>console.info(timeStamp()+" "+cc.hlred+" ERROR "+cc.reset+" "+err.message));
-									//bot.channels.get(config.modlogChannelID).send("User: "+currentCount+" of "+userCount+" "+currentMember.user+" was kicked for being inactive").catch(err=>console.info(timeStamp()+" "+cc.hlred+" ERROR "+cc.reset+" "+err.message));
-									//currentMember.kick("User was inactive").catch(err=>console.info(timeStamp()+" "+cc.hlred+" ERROR "+cc.reset+" "+err.message));
-								}
-								else if(flag==="warn"){
-									//bot.users.get(currentMember.user.id).send({embed: warnembedMSG}).catch(err=>console.info(timeStamp()+" "+cc.hlred+" ERROR "+cc.reset+" "+err.message));
-									//bot.channels.get(config.modlogChannelID).send("User: "+currentCount+" of "+userCount+" "+currentMember.user+" was warned for being inactive").catch(err=>console.info(timeStamp()+" "+cc.hlred+" ERROR "+cc.reset+" "+err.message));
-								}
-								else{
-									let skipDTcheck="no";
-									let daLastDate=DTdays[lastSeenDate.getDay()]+", "+DTmonths[lastSeenDate.getMonth()]+" "+lastSeenDate.getDate()+", "+lastSeenDate.getFullYear();
-									let daysJoined=new Date().getTime() - lastseen; daysJoined=daysJoined/1000/60/60/24; daysJoined=daysJoined.toFixed(0);
-									if(daysJoined>365 && daysJoined<731 && skipDTcheck==="no"){daysJoined=daysJoined-365;daysJoined="1 year, "+daysJoined; skipDTcheck="yes"}
-									if(daysJoined>730 && daysJoined<1096 && skipDTcheck==="no"){daysJoined=daysJoined-730;daysJoined="2 years, "+daysJoined; skipDTcheck="yes"}
-									if(daysJoined>1095 && daysJoined<1461 && skipDTcheck==="no"){daysJoined=daysJoined-1095;daysJoined="3 years, "+daysJoined; skipDTcheck="yes"}
-									if(daysJoined>1460 && daysJoined<1826 && skipDTcheck==="no"){daysJoined=daysJoined-1460;daysJoined="4 years, "+daysJoined; skipDTcheck="yes"}
-									channel.send("User "+currentCount+"/"+userCount+": "+currentMember.user+" has not been seen since: `"+daLastDate+"`, **"+daysJoined+" days ago**");
-								}
-								inactiveCount++;
-							}
-						}
-					}
-				})
-				.catch(err=>console.info(timeStamp()+" "+cc.hlred+" ERROR "+cc.reset+" "+err.message));
-				if(currentCount===userCount){
-					channel.send("✅ Finished checking **"+userCount+"** members on this server with a total of **"+inactiveCount+"** users that are completely **inactive**.")
-						.catch(err=>console.info(timeStamp()+" "+cc.hlred+" ERROR "+cc.reset+" "+err.message));
-				}
-			},timeDelay);
-			timeDelay=timeDelay+1000;
-		}
-	});
-}
-function InactiveExempt(currentMember,guild){let exempt=false;if(currentMember.user.bot){exempt=true}
-	for(donors in serverSettings.donorRoleNames){
-		if(exempt){break}let donorRole=guild.roles.find(role=>role.name===serverSettings.donorRoleNames[donors]);exempt=currentMember.roles.has(donorRole.id)
-	}
-	for(exemptions in serverSettings.activeExemptRoles){if(exempt){break}
-		let exemptRole=guild.roles.find(role=>role.name===serverSettings.activeExemptRoles[exemptions]);exempt=currentMember.roles.has(exemptRole.id);
-	}
-	return exempt;
-}
-*/
-
-
 //
 // DATABASE TIMER FOR TEMPORARY ROLES
 //
@@ -363,10 +243,8 @@ setInterval(function(){
 					let rows=results;
 					for(let rowNumber="0"; rowNumber<rows.length; rowNumber++){
 						dbTime=rows[rowNumber].endDate; daysLeft=(dbTime*1)-(timeNow*1);
-						
 						sid=getGuild(rows[rowNumber].guildID);if(sid===undefined){return}
 						member=bot.guilds.get(rows[rowNumber].guildID).members.get(rows[rowNumber].userID) || "notFound";
-						
 						if(serverSettings.servers[sid].id){
 							if(serverSettings.servers[sid].tempRoles){
 								if(serverSettings.servers[sid].tempRoles.remindAtDays){
@@ -380,7 +258,6 @@ setInterval(function(){
 										);
 										if(rows[rowNumber].reminderSent===null || rows[rowNumber].reminderSent==="no"){
 											if(member!=="notFound"){
-												
 												if(botConfig.consoleLog==="all" || botConfig.consoleLog==="allnochat"){
 													console.info(timeStamp()+" "+cc.lblue+rows[rowNumber].userName+cc.reset+"'s "
 													+cc.green+"temporary role"+cc.reset+" is expiring soon, sending notification..."+cc.reset);
@@ -397,8 +274,6 @@ setInterval(function(){
 								}
 							}
 						}
-						
-						
 						if(daysLeft<1){
 							if(member==="notFound"){
 								if(botConfig.consoleLog==="all" || botConfig.consoleLog==="allnochat" || botConfig.consoleLog==="cmdsevents" || botConfig.consoleLog==="events"){
@@ -466,9 +341,35 @@ setInterval(function(){
 			else{
 				for(let rowNumber="0"; rowNumber<rows.length; rowNumber++){
 					dbTime=rows[rowNumber].endDate; daysLeft=(dbTime*1)-(timeNow*1);
+					sid=getGuild(rows[rowNumber].guildID);if(sid===undefined){return}
+					member=bot.guilds.get(rows[rowNumber].guildID).members.get(rows[rowNumber].userID) || "notFound";
+					if(serverSettings.servers[sid].id){
+						if(serverSettings.servers[sid].tempRoles){
+							if(serverSettings.servers[sid].tempRoles.remindAtDays){
+								let daysRemaining=Math.ceil(daysLeft/86400000), remindAt=(serverSettings.servers[sid].tempRoles.remindAtDays*1), dayORdays=" day";
+								if(serverSettings.servers[sid].tempRoles.remindAtDays>1){dayORdays=" days"}
+								if(daysRemaining===remindAt){
+									sqlite.run(`UPDATE temporaryRoles SET reminderSent=? WHERE userID="${rows[rowNumber].userID}" AND temporaryRole="${rows[rowNumber].temporaryRole}";`,["yes"])
+									.catch(error=>console.info(timeStamp()+" "+cc.hlred+" ERROR "+cc.reset+" Could not "+cc.yellow+"UPDATE"+cc.cyan+" temporaryRoles"+cc.reset+" table | "+error.message));
+									if(rows[rowNumber].reminderSent===null || rows[rowNumber].reminderSent==="no"){
+										if(member!=="notFound"){
+											if(botConfig.consoleLog==="all" || botConfig.consoleLog==="allnochat"){
+												console.info(timeStamp()+" "+cc.lblue+rows[rowNumber].userName+cc.reset+"'s "
+												+cc.green+"temporary role"+cc.reset+" is expiring soon, sending notification..."+cc.reset);
+											}
+											member.send(
+												"⚠ <@"+rows[rowNumber].userID+">, you will **lose** your role: **"+rows[rowNumber].temporaryRole+"** "
+												+"in `"+daysRemaining+dayORdays+"`. Please contact <@"+botConfig.ownerID
+												+"> if you wish to renew your **temporary role**."
+											)
+											.catch(error=>console.info(timeStamp()+" "+cc.hlred+" ERROR "+cc.reset+" "+error.message+" | Member has disabled DMs, blocked me, or is no longer in server"));
+										}
+									}
+								}
+							}
+						}
+					}
 					if(daysLeft<1){
-						sid=getGuild(rows[rowNumber].guildID);if(sid===undefined){return}
-						member=bot.guilds.get(rows[rowNumber].guildID).members.get(rows[rowNumber].userID) || "notFound";
 						if(member==="notFound"){
 							if(botConfig.consoleLog==="all" || botConfig.consoleLog==="allnochat" || botConfig.consoleLog==="cmdsevents" || botConfig.consoleLog==="events"){
 								console.info(
@@ -549,7 +450,7 @@ process.on("unhandledRejection",error=>console.log(timeStamp()+" "+cc.hlred+" ER
 // BOT SIGNED IN AND IS READY
 //
 bot.on("ready", ()=>{
-	botConfig.botVersion="3.0";
+	botConfig.botVersion="3.7";
 	console.info(timeStamp()+" -- DISCORD HELPBOT: "+cc.yellow+bot.user.username+cc.reset+", IS "+cc.green+"READY"+cc.reset+"! --");
 
 	// VERSION CHECKER
@@ -598,8 +499,9 @@ bot.on("ready", ()=>{
 			if(error){console.info(timeStamp()+" "+cc.hlred+" ERROR "+cc.reset+" Could not "+cc.yellow+"CREATE TABLE"+cc.cyan+" temporaryRoles "+cc.reset+"in database\nRAW: "+error)}
 		});
 		myDB.query(`SELECT reminderSent FROM PokeHelp_bot.temporaryRoles;`,async (error,results)=>{
-			if(error){console.info(timeStamp()+" "+cc.hlyellow+" WARNING "+cc.reset+" Could not "+cc.yellow+"SELECT reminderSent FROM"+cc.cyan+" temporaryRoles"+cc.reset+" table\nRAW: "+error
-				+"\n"+timeStamp()+" Column above did not exist. Adding column to table...");
+			if(error){
+				console.info(timeStamp()+" "+cc.hlblue+" WARNING "+cc.reset+" Could not "+cc.yellow+"SELECT reminderSent FROM"+cc.cyan+" temporaryRoles"+cc.reset+" table\nRAW: "+error
+					+"\n"+timeStamp()+" Column above did not exist. Adding column to table...");
 				myDB.query(`ALTER TABLE PokeHelp_bot.temporaryRoles ADD COLUMN reminderSent TEXT AFTER addedByName;`,error=>{
 					if(error){console.info(timeStamp()+" "+cc.hlred+" ERROR "+cc.reset+" Could not "+cc.yellow+"ALTER TABLE"+cc.cyan+" temporaryRoles "+cc.reset+"in database\nRAW: "+error)}
 				});
@@ -632,6 +534,13 @@ bot.on("ready", ()=>{
 		// TEMPORARY ROLES
 		sqlite.run(`CREATE TABLE IF NOT EXISTS temporaryRoles (userID TEXT, userName TEXT, temporaryRole TEXT, guildID TEXT, guildName TEXT, startDate TEXT, endDate TEXT, addedByID TEXT, addedByName TEXT);`)
 		.catch(error=>console.info(timeStamp()+" "+cc.hlred+" ERROR "+cc.reset+" Could not "+cc.yellow+"CREATE TABLE"+cc.cyan+" temporaryRoles "+cc.reset+"in database | "+error.message));
+		sqlite.all(`SELECT reminderSent FROM temporaryRoles`)
+		.catch(err=>{
+			sqlite.run(`ALTER TABLE temporaryRoles ADD COLUMN reminderSent TEXT AFTER addedByName;`)
+			.catch(error=>console.info(timeStamp()+" "+cc.hlred+" ERROR "+cc.reset+" Could not "+cc.yellow+"ALTER"+cc.cyan+" temporaryRoles"+cc.reset+" table | "+error.message));
+			console.info(timeStamp()+" "+cc.hlblue+" NOTICE "+cc.reset+" Could not "+cc.yellow+"SELECT reminderSent FROM"+cc.cyan+" temporaryRoles"+cc.reset+" table\nRAW: "+err.message
+				+"\n"+timeStamp()+" Column above did not exist. Adding column to table...")
+		});
 
 		// TEMPORARY SELF ROLES
 		sqlite.run(`CREATE TABLE IF NOT EXISTS temporarySelfTag (userID TEXT, userName TEXT, temporaryTag TEXT, guildID TEXT, guildName TEXT, startDate TEXT, endDate TEXT);`)
@@ -796,6 +705,7 @@ bot.on("messageUpdate",async (oldMessage,newMessage)=>{
 			modRole={"id":"10101"};console.info(timeStamp()+" "+cc.hlred+" ERROR "+cc.reset+" I could not find "
 				+cc.red+"modRoleName"+cc.reset+": "+cc.cyan+serverSettings.servers[sid].modRoleName+cc.reset+" for server: "
 				+cc.lblue+newMessage.channel.guild.name+cc.reset+" in "+cc.purple+"serverSettings.json"+cc.reset)}
+				
 	// FOUL LANGUAGE FILTER
 	if(foulText.some(word=>newMessage.content.includes(word))){
 		let skip="no";if(member.roles.has(modRole.id) || member.roles.has(adminRole.id) || member.id===botConfig.ownerID){skip="yes"}
@@ -924,15 +834,6 @@ bot.on("message",message=>{
 	}
 	if(myDB!=="disabled"){
 		myDB.query(`SELECT * FROM PokeHelp_bot.chatTracker WHERE userID="${member.id}" AND guildID="${guild.id}";`,(error,results)=>{
-			let curTime=new Date().getTime(), points2add=1;
-			if(args.length>5){
-				if(args.length>9){points2add=2.5}if(args.length>14){points2add=3.5}
-				if(args.length>19){points2add=5.5}if(args.length>24){points2add=6.5}
-				if(args.length>29){points2add=8.5}if(args.length>34){points2add=9.5}
-				if(args.length>39){points2add=11.5}if(args.length>44){points2add=12.5}
-				if(args.length>49){points2add=14.5}if(args.length>54){points2add=15.5}
-				if(args.length>59){points2add=17.5}if(args.length>64){points2add=18.5}
-			}
 			if(error){console.info(timeStamp()+" "+cc.hlred+" ERROR "+cc.reset+" Could not "+cc.yellow+"SELECT * FROM"+cc.cyan+" chatTracker"+cc.reset+" table\nRAW: "+error);}
 			else{
 				if(results.length<1){

@@ -3,14 +3,19 @@ module.exports={
 	name: "info",
 	aliases: ["i"],
 	async execute(timeStamp,timeStampEmbed,cc,message,sid,botGuilds,botChannels,botUsers,botConfig,serverSettings,globalSettings,discordVersion,processVersion){
-		var myDB="disabled";
+		var myDB="disabled", sqlite="disabled";
 		if(serverSettings.myDBserver){
 			if(serverSettings.myDBserver.enabled==="yes"){
 				const mySQL=require("mysql");
-				myDB=mySQL.createConnection(serverSettings.myDBserver); myDB.connect(error=>{if(error){console.info(error)}});
+				myDB=mySQL.createConnection(serverSettings.myDBserver);
+				myDB.connect(error=>{
+					if(error){
+						console.info(timeStamp()+" "+cc.hlred+" ERROR "+cc.reset+" Could not "+cc.yellow+"ACCESS"+cc.cyan+" Database "+cc.reset+"(invalid login)\nRAW: "+error.sqlMessage)
+					}
+				});
 			}
 			else{
-				const sqlite=require("sqlite"); sqlite.open("./database/data.sqlite");
+				sqlite=require("sqlite"); sqlite.open("./database/data.sqlite");
 			}
 		}
 		
